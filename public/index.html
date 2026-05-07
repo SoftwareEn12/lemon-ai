@@ -686,109 +686,128 @@ function clearHist() {
 function showResult(data) {
 
   var card = document.getElementById('resCard');
+
   if (!card) return;
 
   // إصلاح JSON الخام إذا رجع داخل description
   if (data.description && typeof data.description === 'string') {
-    var match = data.description.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        var parsed = JSON.parse(match[0]);
-        if (parsed.status) { data = parsed; }
-      } catch (e) {
-        console.log('تعذر تحليل JSON');
+
+  // استخراج JSON من النص
+  var match = data.description.match(/\{[\s\S]*\}/);
+
+  if (match) {
+    try {
+
+      var parsed = JSON.parse(match[0]);
+
+      // استبدال البيانات إذا كان JSON صحيح
+      if (parsed.status) {
+        data = parsed;
       }
+
+    } catch (e) {
+      console.log('تعذر تحليل JSON');
     }
   }
+}
 
-  var isOk = data.status === 'سليمة';
-  var emoji = isOk ? '✅' : '⚠️';
-  var cls   = isOk ? 'ok' : 'bad';
-  var conf  = data.confidence || 0;
-  var confColor = isOk ? '#1a7a3c' : '#ef4444';
+  var statusColor =
+    data.status === 'سليمة'
+      ? '#22c55e'
+      : '#ef4444';
 
-  var html = '';
+  var statusIcon =
+    data.status === 'سليمة'
+      ? '✅'
+      : '⚠️';
 
-  // ── البانر الرئيسي ──
-  html += '<div class="res-banner ' + cls + '">';
-  html += '<span class="res-emoji">' + emoji + '</span>';
-  html += '<div>';
-  html += '<div class="res-tag">نتيجة التشخيص</div>';
-  html += '<div class="res-title">' + (data.status || 'غير محدد') + '</div>';
-  if (data.disease) {
-    html += '<div class="res-en">' + data.disease;
-    if (data.diseaseEn) html += ' (' + data.diseaseEn + ')';
-    html += '</div>';
-  }
-  html += '</div></div>';
+  card.innerHTML =
 
-  // ── شريط الدقة ──
-  html += '<div class="conf-sec">';
-  html += '<div class="conf-row">';
-  html += '<span class="conf-lbl">دقة التشخيص</span>';
-  html += '<span class="conf-num" style="color:' + confColor + '">' + conf + '%</span>';
-  html += '</div>';
-  html += '<div class="conf-bg"><div class="conf-fill" style="width:' + conf + '%;background:' + confColor + '"></div></div>';
-  html += '</div>';
+    '<div class="res-header" style="border-color:' +
+    statusColor +
+    '">' +
 
-  // ── الوصف ──
-  if (data.description) {
-    html += '<div class="desc-sec">';
-    html += '<span class="desc-ico">📋</span>';
-    html += '<span class="desc-txt">' + data.description + '</span>';
-    html += '</div>';
-  }
+    '<span class="res-icon">' +
+    statusIcon +
+    '</span>' +
 
-  // ── شدة الإصابة ──
-  if (data.severity) {
-    var sevColor = data.severity === 'شديدة' ? '#ef4444' : data.severity === 'متوسطة' ? '#f59e0b' : '#22c55e';
-    html += '<div class="sev-sec">';
-    html += '<span class="sev-lbl">شدة الإصابة</span>';
-    html += '<span class="sev-chip" style="background:' + sevColor + '">' + data.severity + '</span>';
-    html += '</div>';
-  }
+    '<span class="res-status" style="color:' +
+    statusColor +
+    '">' +
+    (data.status || 'غير محدد') +
+    '</span>' +
 
-  // ── الأعراض ──
-  if (data.symptoms && data.symptoms.length) {
-    html += '<div class="list-sec">';
-    html += '<div class="list-hd"><div class="list-bar"></div><span class="list-title">🔍 الأعراض</span></div>';
-    data.symptoms.forEach(function(s) {
-      html += '<div class="list-item"><div class="item-dot"></div><span>' + s + '</span></div>';
-    });
-    html += '</div>';
-  }
+    '<span class="res-conf">دقة التشخيص: ' +
+    (data.confidence || 0) +
+    '%</span>' +
 
-  // ── التوصيات ──
-  if (data.recommendations && data.recommendations.length) {
-    html += '<div class="list-sec">';
-    html += '<div class="list-hd"><div class="list-bar"></div><span class="list-title">💊 التوصيات</span></div>';
-    data.recommendations.forEach(function(r, i) {
-      html += '<div class="list-item"><div class="item-num">' + (i+1) + '</div><span>' + r + '</span></div>';
-    });
-    html += '</div>';
-  }
+    '</div>' +
 
-  // ── أزرار المشاركة ──
-  html += '<div class="act-row">';
-  html += '<button class="act-btn act-wa" onclick="shareWA()">📤 واتساب</button>';
-  html += '<button class="act-btn act-pdf" onclick="sharePDF()">📄 تقرير PDF</button>';
-  html += '</div>';
+    (data.disease
+      ? '<div class="res-disease">🦠 ' +
+          data.disease +
+          (data.diseaseEn
+            ? ' (' + data.diseaseEn + ')'
+            : '') +
+        '</div>'
+      : '') +
 
-  html += '<div class="res-foot">ليمون AI · التشخيص للإرشاد فقط</div>';
+    '<div class="res-desc">' +
+    (data.description || '') +
+    '</div>' +
 
-  card.innerHTML = html;
+    (data.symptoms &&
+    data.symptoms.length
+
+      ? '<div class="res-section"><b>الأعراض:</b><ul>' +
+
+        data.symptoms.map(function (s) {
+          return '<li>' + s + '</li>';
+        }).join('') +
+
+        '</ul></div>'
+
+      : '') +
+
+    (data.recommendations &&
+    data.recommendations.length
+
+      ? '<div class="res-section"><b>التوصيات:</b><ul>' +
+
+        data.recommendations.map(function (r) {
+          return '<li>' + r + '</li>';
+        }).join('') +
+
+        '</ul></div>'
+
+      : '') +
+
+    (data.severity
+
+      ? '<div class="res-severity">شدة الإصابة: <b>' +
+          data.severity +
+        '</b></div>'
+
+      : '');
+
   card.classList.add('on');
 
-  // تأثير الشريط بعد الرسم
-  setTimeout(function() {
-    var fill = card.querySelector('.conf-fill');
-    if (fill) fill.style.width = conf + '%';
-  }, 50);
+  // تشغيل الصوت
+  playBeep(
+    data.status === 'سليمة'
+      ? 'ok'
+      : 'bad'
+  );
 
-  playBeep(isOk ? 'ok' : 'bad');
+  // حفظ النتيجة
   currentResult = data;
-  saveHist(data, 'data:' + mimeType + ';base64,' + imgB64);
+
+  saveHist(
+    data,
+    'data:' + mimeType + ';base64,' + imgB64
+  );
 }
+
 // ============================================================
 // Tab Switch
 // ============================================================
