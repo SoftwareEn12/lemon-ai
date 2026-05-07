@@ -909,18 +909,5 @@ function speakResult() {
   window.speechSynthesis.speak(msg);
 }
   
-  // تجميع النص للنطق
-  let textToSpeak = `${statusText}. ${diseaseText}. نسبة التأكد ${currentResult.confidence} بالمئة. `;
-  
-  if (currentResult.symptoms && currentResult.symptoms.length > 0) {
-    textToSpeak += "الأعراض هي: " + currentResult.symptoms.join(". ");
-  }
-
-  const msg = new SpeechSynthesisUtterance();
-  msg.text = textToSpeak;
-  msg.lang = 'ar-SA'; // لغة عربية
-  msg.rate = 0.9;    // سرعة هادئة لتناسب المزارعين
-  window.speechSynthesis.speak(msg);
-}
 window.onbeforeunload = function() { return "شكراً لاستخدامك ليمون AI - حماية مزارع عُمان"; };
 </script> 
