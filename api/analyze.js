@@ -39,7 +39,8 @@ module.exports = async function handler(req, res) {
               { text: prompt }
             ]
           }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
+         generationConfig: { temperature: 0.1, maxOutputTokens: 800 },
+thinkingConfig: { thinkingBudget: 0 }
         })
       }
     );
