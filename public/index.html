@@ -467,7 +467,6 @@ function analyze() {
   hideErr();
 
   var btn = document.getElementById('aBtn');
-
   btn.disabled = true;
   btn.innerHTML = '⏳ جاري التحليل...';
 
@@ -476,37 +475,26 @@ function analyze() {
 
   fetch(WORKER_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      image: imgB64
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imgB64 })
   })
-
   .then(r => r.json())
-
   .then(data => {
-    if (data.error) {
-      throw new Error(data.error);
-    }
+    if (data.error) throw new Error(data.error);
 
+    playBeep(data.status === 'سليمة' ? 'ok' : 'bad');
+    currentResult = data;
+    saveHist(data, 'data:' + mimeType + ';base64,' + imgB64);
     showResult(data);
   })
-
   .catch(e => {
     showErr('خطأ في التحليل: ' + e.message);
   })
-
   .finally(() => {
     btn.disabled = false;
     btn.innerHTML = '🔍 حلّل مجدداً';
-
-    document.getElementById('scanLine')
-      .classList.remove('on');
-
-    document.getElementById('scanOv')
-      .classList.remove('on');
+    document.getElementById('scanLine').classList.remove('on');
+    document.getElementById('scanOv').classList.remove('on');
   });
 }
 
