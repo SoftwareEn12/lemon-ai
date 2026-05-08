@@ -848,29 +848,38 @@ function reset() {
 
   hideErr();
 }
- // ============================================================
-// دالة المشاركة المطورة (صورة + نص)
+// ============================================================
+// دالة المشاركة الاحترافية (صورة الليمون + التقرير + النص)
 // ============================================================
 async function shareWA() {
   if (!currentResult) return;
 
-  const reportElement = document.getElementById('resCard');
-  
-  // إخفاء الأزرار مؤقتاً لكي لا تظهر في الصورة
-  const actionButtons = reportElement.querySelector('.act-row');
-  if (actionButtons) actionButtons.style.display = 'none';
+  // 1. تحديد العناصر التي سنقوم بدمجها
+  const resultCard = document.getElementById('resCard'); // بطاقة النتيجة (95%)
+  const actionButtons = resultCard.querySelector('.act-row'); // أزرار المشاركة
+  const originalImageUrl = document.getElementById('prevImg').src; // رابط صورة الليمون الأصلية
+
+  // 2. إعدادات التصوير لضمان الجودة العالية
+  const options = {
+    backgroundColor: '#f9fafb', // لون خلفية البطاقة
+    pixelRatio: 3, // لجعل الصورة واضحة جداً (Ultra HD)
+    cacheBust: true,
+  };
 
   try {
-    // 1. تحويل منطقة النتائج إلى صورة PNG
-    const dataUrl = await htmlToImage.toPng(reportElement, {
-      backgroundColor: '#f9fafb', // لون خلفية البطاقة
-      style: { borderRadius: '15px' }
-    });
+    // إخفاء الأزرار مؤقتاً لكي لا تظهر في الصورة النهائية
+    if (actionButtons) actionButtons.style.display = 'none';
 
-    // إعادة إظهار الأزرار بعد التقاط الصورة
+    // 3. التقاط صورة بطاقة النتيجة (95% والأعراض)
+    const reportDataUrl = await htmlToImage.toPng(resultCard, options);
+
+    // إعادة إظهار الأزرار على الموقع
     if (actionButtons) actionButtons.style.display = 'flex';
 
-    // 2. تحضير النص (الوصف)
+    // 4. دمج صورة الليمون مع صورة التقرير في صورة واحدة (Canvas)
+    const combinedDataUrl = await combineImages(originalImageUrl, reportDataUrl);
+
+    // 5. تحضير النص (الوصف)
     const symptoms = currentResult.symptoms ? currentResult.symptoms.map(s => "• " + s).join('\n') : "";
     const recs = currentResult.recommendations ? currentResult.recommendations.map((r, i) => (i+1) + "- " + r).join('\n') : "";
 
@@ -887,36 +896,76 @@ ${symptoms}
 ${recs}
 *تم التشخيص بواسطة ليمون AI*`;
 
-    // 3. محاولة المشاركة عبر Web Share API (تدعم إرسال الصورة مباشرة في الجوال)
+    // 6. مشاركة الملف النهائي كصورة في الواتساب
     if (navigator.share && navigator.canShare) {
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], 'lemon-report.png', { type: 'image/png' });
+      const response = await fetch(combinedDataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], 'lemon-complete-report.png', { type: 'image/png' });
 
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'تقرير ليمون AI',
-          text: msg
-        });
-      } else {
-        throw new Error('المتصفح لا يدعم مشاركة الملفات');
-      }
+      // محاولة المشاركة (ستفتح الواتساب وتظهر الصورة والنص معاً)
+      await navigator.share({
+        files: [file],
+        title: 'تقرير ليمون AI المتكامل',
+        text: msg
+      });
     } else {
-      // 4. حل بديل إذا كان المتصفح لا يدعم مشاركة الصور (فتح واتساب ويب بالرسالة فقط)
-      alert("سيتم تحميل صورة التقرير، يرجى إرفاقها يدوياً في الواتساب.");
+      // حل بديل إذا كان المتصفح لا يدعم مشاركة الملفات (تحميل الصورة + فتح الرابط)
+      alert("سيتم تحميل التقرير المصور، يرجى إرفاقه يدوياً في الواتساب.");
       const link = document.createElement('a');
-      link.download = 'lemon-report.png';
-      link.href = dataUrl;
+      link.download = 'lemon-complete-report.png';
+      link.href = combinedDataUrl;
       link.click();
       window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
     }
 
   } catch (error) {
-    console.error('Error sharing:', error);
+    console.error('Error combining/sharing:', error);
     if (actionButtons) actionButtons.style.display = 'flex'; // إعادة الأزرار في حال الخطأ
     // إرسال النص فقط كحل أخير
     window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
   }
+}
+
+// ============================================================
+// دالة مساعدة لدمج صورتين فوق بعضهما (الليمون فوق التقرير)
+// ============================================================
+function combineImages(lemonImgUrl, reportDataUrl) {
+  return new Promise((resolve) => {
+    const lemonImg = new Image();
+    const reportImg = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // لضمان تحميل الصور من مصادر خارجية (CORS)
+    lemonImg.crossOrigin = "Anonymous";
+    reportImg.crossOrigin = "Anonymous";
+
+    lemonImg.onload = () => {
+      reportImg.onload = () => {
+        // تحديد أبعاد الصورة النهائية
+        const width = reportImg.width;
+        const lemonHeight = Math.round(lemonImg.height * (width / lemonImg.width)); // الحفاظ على التناسب
+        const totalHeight = lemonHeight + reportImg.height;
+
+        canvas.width = width;
+        canvas.height = totalHeight;
+
+        // رسم خلفية بيضاء
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, totalHeight);
+
+        // 1. رسم صورة الليمون في الأعلى
+        ctx.drawImage(lemonImg, 0, 0, width, lemonHeight);
+
+        // 2. رسم صورة التقرير (95%) تحتها
+        ctx.drawImage(reportImg, 0, lemonHeight, width, reportImg.height);
+
+        resolve(canvas.toDataURL('image/png', 0.9));
+      };
+      reportImg.src = reportDataUrl;
+    };
+    lemonImg.src = lemonImgUrl;
+  });
 }
 
   
