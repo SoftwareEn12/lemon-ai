@@ -1003,20 +1003,35 @@ function speakResult() {
     return;
   }
 
-  // صياغة النص للنطق بشكل طبيعي
-  var textToSpeak = `التشخيص الحالي هو: ${currentResult.status}. `;
-  if (currentResult.disease) textToSpeak += `المرض المكتشف هو ${currentResult.disease}. `;
-  textToSpeak += `دقة التحليل بلغت ${currentResult.confidence} بالمئة. `;
+  // 1. صياغة النص الأساسي
+  var textToSpeak = `حالةُ الشجرةِ هي: ${currentResult.status}. `;
+  if (currentResult.disease) {
+    textToSpeak += `المرضُ المكتشفُ هو ${currentResult.disease}. `;
+  }
+  textToSpeak += `دقةُ التحليلِ بلغت ${currentResult.confidence} بالمئة. `;
+
+  // 2. إضافة الأعراض للنطق (هذا هو الجزء الذي كان ناقصاً)
+  if (currentResult.symptoms && currentResult.symptoms.length) {
+    textToSpeak += "الأعراضُ المكتشفةُ في الصورةِ هي: ";
+    currentResult.symptoms.forEach((s) => { 
+      textToSpeak += s + "، "; 
+    });
+    textToSpeak += ". "; // وقف بسيط بعد انتهاء الأعراض
+  }
   
+  // 3. إضافة التوصيات
   if (currentResult.recommendations && currentResult.recommendations.length) {
-    textToSpeak += "إليك أهم التوصيات: ";
-    currentResult.recommendations.forEach((r, i) => { textToSpeak += `التوصية رقم ${i + 1}: ${r}. `; });
+    textToSpeak += "إليك أهمُ التوصياتِ الزراعية: ";
+    currentResult.recommendations.forEach((r, i) => { 
+      textToSpeak += `توصية رقم ${i + 1}: ${r}. `; 
+    });
   }
 
+  // إعدادات المحرك الصوتي
   var msg = new SpeechSynthesisUtterance();
   msg.text = textToSpeak;
-  msg.lang = 'ar-SA'; // اختيار العربية الفصحى لضمان النطق الصحيح
-  msg.rate = 0.85;    // سرعة هادئة لتكون الكلمات واضحة للمزارع
+  msg.lang = 'ar-SA'; 
+  msg.rate = 0.85; // سرعة هادئة للوضوح
 
   msg.onstart = function() { 
     speaking = true; 
